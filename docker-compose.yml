@@ -1,0 +1,43 @@
+services:
+  torproxy:
+    build: .
+    image: torproxy-panel:local
+    container_name: torproxy
+    restart: unless-stopped
+    environment:
+      # Panel
+      PANEL_PORT: "8099"
+      PANEL_USER: "admin"
+      # Leave PANEL_PASS unset to generate a password into ./data/panel_password.
+      # PANEL_PASS: "change-me"
+      # Never disable auth while the panel is reachable from an untrusted network.
+      # PANEL_DISABLE_AUTH: "1"
+
+      # Bridge sourcing. An empty country uses the built-in bridge list only;
+      # set a two-letter country code to also request country-specific bridges.
+      MOAT_COUNTRY: ""
+      MOAT_DIRECT: "1"
+      TARGET_BRIDGES: "4"
+      TEST_TIMEOUT: "60"
+      MAX_TEST: "10"
+
+      # Automatic refresh and health checks.
+      REFRESH_HOURS: "168"
+      HEALTH_INTERVAL: "300"
+      FAIL_THRESHOLD: "3"
+
+      # Optional first-run seed; ignored once ./data/bridges.conf exists.
+      # BRIDGE: |
+      #   obfs4 192.0.2.10:443 <FINGERPRINT> cert=<CERT> iat-mode=0
+    volumes:
+      - ./data:/data
+    ports:
+      - "127.0.0.1:8099:8099"   # web panel
+      - "127.0.0.1:9050:9050"   # Tor SOCKS
+      - "127.0.0.1:8118:8118"   # Privoxy HTTP proxy
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

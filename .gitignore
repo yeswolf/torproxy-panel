@@ -1,0 +1,9 @@
+# Runtime state: bridge credentials, cached IPs, password, history.
+/data/
+
+# Local overrides and editor leftovers.
+.env
+*.bak
+*.tmp
+__pycache__/
+*.py[cod]
