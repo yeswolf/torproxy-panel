@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>torproxy — мосты</title>
+<title>torproxy — bridge control</title>
 <style>
   :root {
     --bg: #0f1115;
@@ -95,24 +95,24 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>torproxy <span>— управление мостами</span></h1>
+    <h1>torproxy <span>— bridge control</span></h1>
     <span id="torPill" class="pill"><i class="dot"></i><span id="torText">Tor: …</span></span>
-    <span id="healthPill" class="pill"><i class="dot"></i><span id="healthText">прокси: …</span></span>
+    <span id="healthPill" class="pill"><i class="dot"></i><span id="healthText">proxy: …</span></span>
   </header>
 
   <div class="grid">
     <div class="card"><div class="label">Exit IP</div><div id="exitIp" class="value mono muted">—</div></div>
-    <div class="card"><div class="label">Мостов в конфиге</div><div id="bridgeCount" class="value">—</div></div>
-    <div class="card"><div class="label">Авто-обновление</div><div id="autoState" class="value">—</div></div>
-    <div class="card"><div class="label">Последнее обновление</div><div id="lastUpdate" class="value" style="font-size:14px">—</div></div>
+    <div class="card"><div class="label">Bridges configured</div><div id="bridgeCount" class="value">—</div></div>
+    <div class="card"><div class="label">Auto-refresh</div><div id="autoState" class="value">—</div></div>
+    <div class="card"><div class="label">Last update</div><div id="lastUpdate" class="value" style="font-size:14px">—</div></div>
   </div>
 
   <section>
-    <h2>Действия</h2>
+    <h2>Actions</h2>
     <div class="row">
-      <button id="updateBtn" class="primary">Обновить мосты</button>
-      <button id="healthBtn">Проверить связь</button>
-      <button id="restartBtn">Перезапустить Tor</button>
+      <button id="updateBtn" class="primary">Update bridges</button>
+      <button id="healthBtn">Check connectivity</button>
+      <button id="restartBtn">Restart Tor</button>
     </div>
     <div id="jobBox" style="display:none; margin-top:16px">
       <div class="row" style="justify-content:space-between">
@@ -120,42 +120,42 @@
         <div id="jobReason" class="muted mono"></div>
       </div>
       <table style="margin-top:10px">
-        <thead><tr><th>Мост</th><th style="width:110px">Статус</th><th style="width:80px">Время</th><th>Детали</th></tr></thead>
+        <thead><tr><th>Bridge</th><th style="width:110px">Status</th><th style="width:80px">Time</th><th>Details</th></tr></thead>
         <tbody id="jobRows"></tbody>
       </table>
     </div>
   </section>
 
   <section>
-    <h2>Текущие мосты</h2>
-    <div id="currentBridges" class="bridges"><span class="muted">загрузка…</span></div>
+    <h2>Current bridges</h2>
+    <div id="currentBridges" class="bridges"><span class="muted">loading…</span></div>
   </section>
 
   <section>
-    <h2>Применить свои мосты</h2>
-    <p class="muted" style="margin-top:0">По одному мосту на строку, с префиксом <code>Bridge</code> или без. После применения Tor перезапустится.</p>
+    <h2>Apply your own bridges</h2>
+    <p class="muted" style="margin-top:0">One bridge per line, with or without the <code>Bridge</code> prefix. Tor restarts after applying.</p>
     <textarea id="manual" spellcheck="false" placeholder="obfs4 203.0.113.1:443 AAAA… cert=… iat-mode=0"></textarea>
     <div class="row" style="margin-top:10px">
-      <button id="applyBtn" class="primary">Применить</button>
-      <button id="fillBtn">Вставить текущие</button>
+      <button id="applyBtn" class="primary">Apply</button>
+      <button id="fillBtn">Insert current</button>
       <span id="applyNote" class="muted"></span>
     </div>
   </section>
 
   <section>
-    <h2>Настройки</h2>
+    <h2>Settings</h2>
     <div class="row" style="gap:22px">
-      <label class="check"><input type="checkbox" id="autoToggle"> Авто-обновление</label>
-      <label class="check">Ротация раз в <input type="number" id="refreshHours" min="1" max="8760"> ч</label>
-      <button id="saveCfg">Сохранить</button>
+      <label class="check"><input type="checkbox" id="autoToggle"> Auto-refresh</label>
+      <label class="check">Rotate every <input type="number" id="refreshHours" min="1" max="8760"> h</label>
+      <button id="saveCfg">Save</button>
     </div>
-    <p class="muted" style="margin-bottom:0">При падении прокси (3 проверки подряд) мосты обновляются автоматически.
-      Страна Moat: <span id="country" class="mono"></span>. Данные: <span id="dataDir" class="mono"></span>.</p>
+    <p class="muted" style="margin-bottom:0">When the proxy fails (3 checks in a row), bridges refresh automatically.
+      Moat country: <span id="country" class="mono"></span>. Data: <span id="dataDir" class="mono"></span>.</p>
   </section>
 
   <section>
-    <h2>История</h2>
-    <div id="history" class="history"><span class="muted">пусто</span></div>
+    <h2>History</h2>
+    <div id="history" class="history"><span class="muted">empty</span></div>
   </section>
 </div>
 
@@ -189,7 +189,7 @@ async function api(path, options) {
 
 function fmtTime(ts) {
   if (!ts) return '—';
-  return new Date(ts * 1000).toLocaleString('ru-RU');
+  return new Date(ts * 1000).toLocaleString('en-US');
 }
 
 function bridgeShort(line) {
@@ -204,7 +204,7 @@ function bridgeShort(line) {
 function renderBridges(bridges) {
   const box = $('currentBridges');
   if (!bridges.length) {
-    box.innerHTML = '<span class="muted">мосты не заданы — Tor подключается напрямую</span>';
+    box.innerHTML = '<span class="muted">no bridges configured — Tor connects directly</span>';
     return;
   }
   box.innerHTML = bridges.map((line) => {
@@ -221,7 +221,7 @@ function renderJob(job) {
   box.style.display = active ? 'block' : 'none';
   $('jobPhase').textContent = job.phase || '—';
   $('jobMsg').textContent = job.message || '';
-  $('jobReason').textContent = job.reason ? 'причина: ' + job.reason : '';
+  $('jobReason').textContent = job.reason ? 'reason: ' + job.reason : '';
   const rows = $('jobRows');
   if (job.candidates && job.candidates.length) {
     rows.innerHTML = job.candidates.map((item) => {
@@ -241,7 +241,7 @@ function renderJob(job) {
 function renderHistory(items) {
   const box = $('history');
   if (!items || !items.length) {
-    box.innerHTML = '<span class="muted">пусто</span>';
+    box.innerHTML = '<span class="muted">empty</span>';
     return;
   }
   box.innerHTML = items.slice().reverse().map((item) =>
@@ -256,16 +256,16 @@ function render(status) {
 
   const torPill = $('torPill');
   torPill.className = 'pill ' + (status.tor_running ? 'ok' : 'bad');
-  $('torText').textContent = status.tor_running ? 'Tor работает' : 'Tor не работает';
+  $('torText').textContent = status.tor_running ? 'Tor running' : 'Tor stopped';
 
   const healthPill = $('healthPill');
   const healthy = health.ok === true;
   healthPill.className = 'pill ' + (healthy ? 'ok' : (health.ok === false ? 'bad' : 'warn'));
-  $('healthText').textContent = healthy ? 'прокси: ок' : (health.ok === false ? 'прокси: ошибка' : 'прокси: нет данных');
+  $('healthText').textContent = healthy ? 'proxy: ok' : (health.ok === false ? 'proxy: error' : 'proxy: no data');
   $('exitIp').textContent = health.ip || '—';
 
   $('bridgeCount').textContent = (status.bridges || []).length;
-  $('autoState').textContent = status.state.auto ? 'включено' : 'выключено';
+  $('autoState').textContent = status.state.auto ? 'enabled' : 'disabled';
   $('lastUpdate').textContent = fmtTime(status.state.last_update);
   $('country').textContent = status.country || '—';
   $('dataDir').textContent = status.data_dir || '—';
@@ -294,30 +294,30 @@ async function refresh() {
 }
 
 $('updateBtn').onclick = async () => {
-  try { await api('api/update', { method: 'POST', body: JSON.stringify({ reason: 'manual' }) }); toast('Обновление запущено'); refresh(); }
-  catch (error) { toast('Не удалось запустить: ' + error.message, true); }
+  try { await api('api/update', { method: 'POST', body: JSON.stringify({ reason: 'manual' }) }); toast('Update started'); refresh(); }
+  catch (error) { toast('Could not start: ' + error.message, true); }
 };
 
 $('healthBtn').onclick = async () => {
   $('healthBtn').disabled = true;
   try {
     const result = await api('api/health', { method: 'POST', body: '{}' });
-    toast(result.health.ok ? 'Прокси работает, IP ' + result.health.ip : 'Прокси не отвечает');
+    toast(result.health.ok ? 'Proxy is up, IP ' + result.health.ip : 'Proxy is not responding');
     refresh();
   } catch (error) {
-    toast('Ошибка проверки: ' + error.message, true);
+    toast('Health check failed: ' + error.message, true);
   } finally {
     $('healthBtn').disabled = false;
   }
 };
 
 $('restartBtn').onclick = async () => {
-  if (!confirm('Перезапустить Tor? Прокси на несколько секунд пропадёт.')) return;
+  if (!confirm('Restart Tor? The proxy will drop for a few seconds.')) return;
   try {
     const result = await api('api/restart', { method: 'POST', body: '{}' });
-    toast(result.ok ? 'Tor перезапущен' : 'Ошибка: ' + result.detail, !result.ok);
+    toast(result.ok ? 'Tor restarted' : 'Error: ' + result.detail, !result.ok);
     setTimeout(refresh, 2000);
-  } catch (error) { toast('Ошибка: ' + error.message, true); }
+  } catch (error) { toast('Error: ' + error.message, true); }
 };
 
 $('manual').addEventListener('input', () => { manualTouched = true; });
@@ -327,24 +327,24 @@ $('fillBtn').onclick = async () => {
     const status = await api('api/status');
     $('manual').value = (status.bridges || []).map((line) => 'Bridge ' + line).join('\n');
     manualTouched = false;
-  } catch (error) { toast('Ошибка: ' + error.message, true); }
+  } catch (error) { toast('Error: ' + error.message, true); }
 };
 
 $('applyBtn').onclick = async () => {
   const lines = $('manual').value.split('\n').map((line) => line.trim()).filter(Boolean);
-  if (!lines.length) { toast('Вставьте хотя бы один мост', true); return; }
-  if (!confirm('Применить ' + lines.length + ' мостов и перезапустить Tor?')) return;
+  if (!lines.length) { toast('Insert at least one bridge', true); return; }
+  if (!confirm('Apply ' + lines.length + ' bridge(s) and restart Tor?')) return;
   $('applyBtn').disabled = true;
-  $('applyNote').textContent = 'применяю…';
+  $('applyNote').textContent = 'applying…';
   try {
     const result = await api('api/apply', { method: 'POST', body: JSON.stringify({ bridges: lines }) });
-    $('applyNote').textContent = result.ok ? 'применено' : 'Tor не перезапустился';
-    toast(result.ok ? 'Мосты применены' : 'Ошибка: ' + result.detail, !result.ok);
+    $('applyNote').textContent = result.ok ? 'applied' : 'Tor did not restart';
+    toast(result.ok ? 'Bridges applied' : 'Error: ' + result.detail, !result.ok);
     manualTouched = false;
     setTimeout(refresh, 1500);
   } catch (error) {
     $('applyNote').textContent = '';
-    toast('Ошибка: ' + error.message, true);
+    toast('Error: ' + error.message, true);
   } finally {
     $('applyBtn').disabled = false;
   }
@@ -354,9 +354,9 @@ $('saveCfg').onclick = async () => {
   try {
     await api('api/config', { method: 'POST', body: JSON.stringify({ refresh_hours: Number($('refreshHours').value) }) });
     await api('api/auto', { method: 'POST', body: JSON.stringify({ enabled: $('autoToggle').checked }) });
-    toast('Настройки сохранены');
+    toast('Settings saved');
     refresh();
-  } catch (error) { toast('Ошибка: ' + error.message, true); }
+  } catch (error) { toast('Error: ' + error.message, true); }
 };
 
 refresh();

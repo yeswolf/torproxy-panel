@@ -1,149 +1,124 @@
-# torproxy-panel
+# 🧅 torproxy panel
 
-A small self-hosted web panel that keeps an
-[obfs4](https://community.torproject.org/relay/setup/bridge/) bridge
-configuration for a `torprivoxy` container up to date.
+![Docker](https://img.shields.io/badge/Docker-Compose%20v2-2496ED)
+![Tor](https://img.shields.io/badge/Tor-obfs4-7D4698)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB)
+![Version](https://img.shields.io/badge/version-1.0-1f8a70)
+[![Latest release](https://img.shields.io/github/v/release/yeswolf/torproxy-panel?sort=semver&color=1f8a70)](https://github.com/yeswolf/torproxy-panel/releases/latest)
 
-It fetches candidate bridges from the Tor Project Moat API, tests each
-candidate with a throwaway Tor process, writes the working ones to
-`/data/bridges.conf`, and restarts the supervised Tor instance. Everything in
-the panel is Python standard library; the image is built on top of
-[`avpnusr/torprivoxy`](https://hub.docker.com/r/avpnusr/torprivoxy).
+<p align="center">
+  <img src="docs/screenshots/panel.png" alt="torproxy bridge panel showing exit IP, four obfs4 bridges and rotation settings" width="900">
+</p>
+<p align="center"><em>The panel after a successful update. Bridge lines in the screenshot are synthetic TEST-NET examples.</em></p>
 
-## Features
+**A self-hosted web panel that keeps obfs4 bridges fresh for a Tor + Privoxy container.**
+It fetches candidates from the Tor Project, tests each one, applies the working set and
+restarts Tor — no terminal, no manual bridge hunting.
 
-- Country-targeted and built-in obfs4 bridge lists from the Tor Project Moat API.
-- Per-bridge connectivity test before anything is applied; only working bridges
-  are written.
-- Manual bridge entry, Tor restart, and an end-to-end proxy health check.
-- Automatic refresh on a timer and after repeated health-check failures.
-- Persistent state and a short action history in `/data`.
-- Optional HTTP Basic authentication, with a generated password when none is set.
-- Single static page; no build step, no external assets at runtime.
+A **Tor bridge panel** for censored networks: **obfs4**, **Moat**, **Privoxy**, **SOCKS5**,
+**Docker**, **bridge rotation** and **self-healing** proxy health checks.
 
-## How it works
+**Release:** [v1.0.0](https://github.com/yeswolf/torproxy-panel/releases/latest) ·
+**Docs:** [docs/](docs/README.md) ·
+**Source:** [github.com/yeswolf/torproxy-panel](https://github.com/yeswolf/torproxy-panel)
 
-```text
-Moat API ──▶ candidates ──▶ throwaway tor test ──▶ /data/bridges.conf
-                                                        │
-                                                        ▼
-                                                  reload tor
-                                                        │
-                                          privoxy :8118 ─┴─ socks :9050
-```
+## ✨ What it does
 
-The base image runs Tor and Privoxy under runit. The panel runs as a second
-supervised service and never edits Tor settings beyond the bridge block that
-`entrypoint.sh` and `reload.sh` assemble from the image template.
+- 🌉 **Automatic bridge rotation** — country-targeted Moat settings plus the built-in
+  obfs4 list, deduplicated against what is already configured.
+- 🧪 **Test before apply** — every candidate is tried in a throwaway Tor process; only
+  bridges that build a circuit are written.
+- 🔁 **Self-healing** — refresh on a timer or after repeated proxy health failures.
+- 🧰 **Manual control** — paste your own bridges, restart Tor, run a health check and
+  watch per-bridge progress.
+- 🛡️ **Password protection** — HTTP Basic auth, with a generated password when none is
+  configured.
+- 🪶 **No dependencies** — Python standard library only, no database, no external
+  assets at runtime.
+- 🐳 **One compose file** — Tor, Privoxy, obfs4proxy and the panel in a single
+  container.
 
-## Quick start
+## 🚀 Quick start
 
 ```sh
-git clone https://github.com/<owner>/torproxy-panel.git
+git clone https://github.com/yeswolf/torproxy-panel.git
 cd torproxy-panel
 
-# The container runs as tordocker (UID 102, GID 103); the bind mount must be
-# writable by that user.
+# The container runs as tordocker (UID 102, GID 103).
 mkdir -p data
 sudo chown 102:103 data
 
 docker compose up -d --build
 ```
 
-Open <http://127.0.0.1:8099/>. The default user is `admin`. If `PANEL_PASS` is
-not set, the panel generates a password on first start, writes it to
-`data/panel_password`, and prints it to the container log:
+Open <http://127.0.0.1:8099/>. The default user is `admin`. If you did not set
+`PANEL_PASS`, read the generated password:
 
 ```sh
 docker logs torproxy 2>&1 | grep 'generated panel password'
 ```
 
-A working SOCKS proxy is then available on `127.0.0.1:9050` and an HTTP proxy on
-`127.0.0.1:8118`.
+The proxy is then available on `127.0.0.1:9050` (SOCKS) and `127.0.0.1:8118` (HTTP).
+All ports in the example bind to loopback; see [security](docs/security.md) before
+exposing them.
 
-## Configuration
+## ⚙️ Configuration
 
-All settings are environment variables. The compose file contains a working
-example; the table lists every option the panel reads.
+The compose file contains a working example. The most used settings:
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `PANEL_PORT` | `8099` | Panel HTTP port inside the container. |
-| `PANEL_BIND` | `0.0.0.0` | Panel bind address inside the container. |
-| `PANEL_USER` | `admin` | Basic-auth user name. |
-| `PANEL_PASS` | empty | Basic-auth password. When empty, one is generated into `/data/panel_password`. |
-| `PANEL_DISABLE_AUTH` | `0` | Set to `1` to disable authentication. Only safe on a trusted network. |
-| `PANEL_DATA` | `/data` | Directory for bridges, state, history, and the password. |
-| `MOAT_COUNTRY` | empty | Two-letter country code for the Moat settings request. When empty, only the built-in bridge list is used. |
-| `MOAT_DIRECT` | `1` | Resolve Moat through DNS-over-HTTPS and connect directly; falls back to the local Privoxy. |
+| `PANEL_USER` / `PANEL_PASS` | `admin` / generated | Basic-auth credentials. |
+| `MOAT_COUNTRY` | empty | Country code for targeted Moat bridges. Empty uses the built-in list. |
 | `TARGET_BRIDGES` | `4` | Number of working bridges to keep. |
-| `TEST_TIMEOUT` | `60` | Seconds allowed for one bridge test. |
-| `MAX_TEST` | `10` | Maximum candidates tested per update. |
-| `REFRESH_HOURS` | `168` | Automatic refresh interval. `0` disables the timer. |
-| `HEALTH_INTERVAL` | `300` | Seconds between proxy health checks. |
-| `FAIL_THRESHOLD` | `3` | Consecutive health failures that trigger an automatic bridge update. |
-| `BRIDGE` | empty | First-run seed only. Ignored once `/data/bridges.conf` exists. |
+| `REFRESH_HOURS` | `168` | Automatic rotation interval. `0` disables the timer. |
+| `FAIL_THRESHOLD` | `3` | Consecutive health failures that trigger an update. |
 
-## Data directory
+Every variable, the HTTP API and the data layout: [docs/usage.md](docs/usage.md).
 
-`/data` holds runtime state and is deliberately excluded from git:
+## 🧱 Stack
 
-| File | Contents |
+|  |  |
 |---|---|
-| `bridges.conf` | Active bridges. Treat as sensitive. |
-| `bridges.conf.bak` | Previous bridge set. |
-| `state.json` | Auto-refresh settings and action history. |
-| `moat_ip` | Cached Moat API address. |
-| `panel_password` | Generated password, mode `0600`. |
+| 🐳 Base image | [`avpnusr/torprivoxy`](https://hub.docker.com/r/avpnusr/torprivoxy) — Tor, Privoxy, obfs4proxy, runit |
+| 🧅 Tor | SOCKS on `9050`, HTTP proxy on `8118` |
+| 🖥️ Panel | Python stdlib HTTP server on `8099` |
+| 🌉 Bridges | obfs4 from the Tor Project Moat API, tested locally |
+| 💾 State | `/data` — `bridges.conf`, `state.json`, `panel_password` |
 
-Bridge lines contain endpoint addresses, fingerprints, and `cert=` values. They
-are credentials for reaching the Tor network and should not be published.
+How the processes and the update pipeline fit together:
+[docs/architecture.md](docs/architecture.md).
 
-## HTTP API
+## 📚 Documentation
 
-The panel uses the same endpoints as its own UI. All POST calls require the
-`X-Requested-With: XMLHttpRequest` header and Basic authentication when enabled.
-
-| Method and path | Purpose |
+| Guide | What's inside |
 |---|---|
-| `GET /` | Panel page. |
-| `GET /api/status` | Tor state, bridges, job progress, settings, history. |
-| `POST /api/update` | Start a bridge update. |
-| `POST /api/health` | Check the proxy and report the exit IP. |
-| `POST /api/restart` | Restart Tor. |
-| `POST /api/apply` | Validate, write, and apply a user-supplied bridge list. |
-| `POST /api/config` | Change refresh, health, and failure settings. |
-| `POST /api/auto` | Enable or disable automatic updates. |
+| [`docs/usage.md`](docs/usage.md) | Panel workflow, every setting, HTTP API, data files, troubleshooting |
+| [`docs/security.md`](docs/security.md) | Exposure model, authentication, bridge handling, open-proxy risks |
+| [`docs/architecture.md`](docs/architecture.md) | Container layout, supervision, bridge update pipeline |
+| [`docs/README.md`](docs/README.md) | Documentation index and repository map |
 
-## Security notes
+## ⚠️ Known limitations
 
-- The panel speaks plain HTTP and has no CSRF token beyond the required
-  `X-Requested-With` header. Keep it on a trusted LAN, bind it to loopback, or
-  put it behind a TLS reverse proxy.
-- Bind the proxy ports to loopback unless other hosts are meant to use them.
-  An open Privoxy or SOCKS port is an open proxy.
-- Do not commit `/data`, bridge lines, or the generated password.
-- `PANEL_DISABLE_AUTH=1` removes the only access control the panel has.
-
-## Requirements
-
-- Docker with Compose v2.
-- Outbound access to the Tor Project and the Tor network.
-- Linux on the host; the base image includes Tor, Privoxy, and obfs4proxy.
-
-## Layout
-
-```text
-Dockerfile        image based on avpnusr/torprivoxy
-docker-compose.yml
-entrypoint.sh     seeds bridges.conf and assembles torrc on first start
-reload.sh         rebuilds torrc and restarts the supervised Tor process
-app/panel.py      bridge manager and HTTP server
-app/index.html    single-page UI
-```
-
-## Limitations
-
-- The UI text is Russian; the API and logs are English.
 - Bridges are tested sequentially, so an update can take a few minutes.
 - Only obfs4 bridges are requested and validated.
+- The panel speaks plain HTTP; use a TLS reverse proxy for untrusted networks.
+- A container restart cancels a running update; the applied bridge set is unaffected.
+
+The full list and troubleshooting live in [docs/usage.md](docs/usage.md#limitations).
+
+## 🙏 Credits
+
+- [Tor Project](https://www.torproject.org/) for Tor, obfs4proxy and the Moat bridge
+  API.
+- [`avpnusr/torprivoxy`](https://hub.docker.com/r/avpnusr/torprivoxy) for the runtime
+  image.
+- Python standard library for the panel, the bridge tester and the HTTP server.
+
+## 📄 License
+
+No `LICENSE` file yet — usage conditions for the project's own code are not defined.
+The base image and the Tor software keep their respective licenses.
+
+⭐ If this keeps your proxy alive, a star helps other people find it.

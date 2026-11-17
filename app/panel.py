@@ -473,7 +473,7 @@ def start_update(reason):
         job.update({
             "running": True,
             "phase": "fetch",
-            "message": "получаю свежие мосты",
+            "message": "fetching fresh bridges",
             "reason": reason,
             "started": now(),
             "finished": 0,
@@ -496,19 +496,19 @@ def update_worker(reason):
         if not candidates:
             with job_lock:
                 job["phase"] = "done"
-                job["message"] = "Moat не вернул ни одного моста"
+                job["message"] = "Moat returned no bridges"
             add_history("update", False, "Moat returned no bridges")
             return
 
         working = []
         with job_lock:
             job["phase"] = "test"
-            job["message"] = "проверяю %d мостов" % min(len(candidates), MAX_TEST)
+            job["message"] = "testing %d bridges" % min(len(candidates), MAX_TEST)
 
         for index, line in enumerate(candidates[:MAX_TEST]):
             with job_lock:
                 job["candidates"][index]["status"] = "testing"
-                job["message"] = "проверяю %d/%d" % (index + 1, min(len(candidates), MAX_TEST))
+                job["message"] = "testing %d/%d" % (index + 1, min(len(candidates), MAX_TEST))
             try:
                 ok, seconds, note = test_bridge(line)
             except Exception as exc:  # noqa: BLE001 - one bad line must not stop the run
@@ -528,7 +528,7 @@ def update_worker(reason):
         if not working:
             with job_lock:
                 job["phase"] = "done"
-                job["message"] = "рабочих мостов не найдено, оставил прежние"
+                job["message"] = "no working bridges found, kept the previous set"
             add_history("update", False, "no working bridges among %d tested" %
                         min(len(candidates), MAX_TEST))
             return
@@ -537,13 +537,13 @@ def update_worker(reason):
         chosen = [line for _, line in working[:TARGET_BRIDGES]]
         with job_lock:
             job["phase"] = "apply"
-            job["message"] = "применяю %d мостов" % len(chosen)
+            job["message"] = "applying %d bridges" % len(chosen)
         write_bridges(chosen)
         ok, detail = reload_tor()
         if not ok:
             with job_lock:
                 job["phase"] = "done"
-                job["message"] = "ошибка перезапуска Tor: %s" % detail
+                job["message"] = "Tor restart failed: %s" % detail
             add_history("update", False, detail)
             return
 
@@ -562,16 +562,16 @@ def update_worker(reason):
         _runtime["consecutive_fails"] = 0
         with job_lock:
             job["phase"] = "done"
-            job["message"] = ("обновлено, exit IP %s" % health.get("ip")
+            job["message"] = ("updated, exit IP %s" % health.get("ip")
                               if health.get("ok") else
-                              "мосты применены, но прокси пока не отвечает")
+                              "bridges applied, but the proxy is not responding yet")
         add_history("update", bool(health.get("ok")),
                     "applied %d bridges, exit %s" % (len(chosen), health.get("ip") or "-"))
     except Exception as exc:  # noqa: BLE001 - keep the panel alive
         log("update failed: %s" % exc)
         with job_lock:
             job["phase"] = "done"
-            job["message"] = "ошибка: %s" % exc
+            job["message"] = "error: %s" % exc
         add_history("update", False, str(exc))
     finally:
         with state_lock:
