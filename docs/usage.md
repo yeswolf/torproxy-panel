@@ -107,7 +107,7 @@ docker logs -f torproxy
   container log; no panel state is lost.
 - **Permission errors on `/data`.** Fix ownership as described above.
 - **Times look wrong.** Set `TZ` on the container; the panel stores Unix timestamps and
-  renders them in the browser locale.
+  renders them in `en-US` format.
 
 ## Limitations
 
